@@ -1,0 +1,409 @@
+<script>
+'use strict';
+
+	var  neuralNetwork = {};
+	var db = [[],[]];
+	var hiddenNodes = [];
+
+	function getNodesWeights (from, to, layer){
+	  var result = layer == 0 ? -0.2 : 0;
+	  if(db[layer] && db[layer][from] && db[layer][from][to]){
+		  result = db[layer][from][to];
+	  }
+	  return result;
+	}
+
+	function setNodesWeights (from, to, layer, value){
+	  if(!db[layer]){
+		  db[layer] = [];
+	  }
+	  if(!db[layer][from]){
+		db[layer][from] = []
+	  }
+	  db[layer][from][to] = value;
+	  //console.warn(from+" - "+ to +" - "+ layer);
+	  //console.warn("SET " + value);
+	}
+
+	function createHiddenLayer(inputs, outputs){
+	  if(inputs.length>3) throw "too many inputs";   /* LIMIT used also in fn getHiddenLayer */
+	  var key = inputs.sort().join("_"); // sort is maybe not needed
+
+	  if(hiddenNodes.indexOf(key)<0){
+		let id = hiddenNodes.push(key) - 1;
+		for (let obj of inputs) {
+		  setNodesWeights(obj, id, 0, 1/inputs.length);
+		}
+
+		for (let obj of outputs) {
+		  setNodesWeights(id, obj, 1, 0.1); // 0.1 default value?!
+		}
+	  }
+	}
+
+	function getHiddenLayer(inputs, outputs){
+	  if(inputs.length>3) throw "too many inputs";
+
+	  var result = [];
+
+	  for (let obj of inputs) {
+		for (let obj1 in db[0][obj]) {
+		  result.push(obj1);
+		}
+	  }
+
+	  for (let obj of outputs) {
+		for (let obj1 in db[1]) {
+		  if(db[1][obj1][obj])
+			result.push(obj1);
+		}
+	  }
+
+	  return result;
+	}
+
+	function updateNeuralNetwork(inputs, outputs){
+
+		neuralNetwork.inputs = inputs;
+		neuralNetwork.hiddens = getHiddenLayer(inputs, outputs);
+		neuralNetwork.outputs = outputs;
+
+		neuralNetwork.inputsOutput = "1".repeat( neuralNetwork.inputs.length).split("");
+		neuralNetwork.hiddensOutput = "1".repeat(neuralNetwork.hiddens.length).split("");
+		neuralNetwork.outputsOutput = "1".repeat(neuralNetwork.outputs.length).split("");
+
+		neuralNetwork.inputsWeight = [];
+		for (let input of inputs){
+		   let row = [];
+			for (let hidden of neuralNetwork.hiddens) {
+				//console.warn(getNodesWeights(input, hidden, 0));
+				row.push(getNodesWeights(input, hidden, 0));
+			}
+			neuralNetwork.inputsWeight.push(row);
+		}
+
+		neuralNetwork.outputsWeight = [];
+		for (let hidden of neuralNetwork.hiddens) {
+		   let row = [];
+			for (let output of outputs){
+			  row.push(getNodesWeights(hidden, output, 1));
+			}
+			neuralNetwork.outputsWeight.push(row);
+		}
+
+	}
+
+	function feedforward(){
+	
+	/* 	Data was set
+		for (let idx in neuralNetwork.inputsOutput) {
+		console.info(neuralNetwork.inputsOutput[idx] +" -> ");
+			neuralNetwork.inputsOutput[idx] = 1;
+		}
+	*/
+		for (let idxHidden in neuralNetwork.hiddensOutput) {
+			let sum = 0
+			for (let idxInput in neuralNetwork.inputsOutput) {		
+			  sum = sum + neuralNetwork.inputsOutput[idxInput] * neuralNetwork.inputsWeight[idxInput][idxHidden];
+			}
+			neuralNetwork.hiddensOutput[idxHidden] = sigmoidFunction(sum);
+		}
+
+		for (let idxOutput in neuralNetwork.outputsOutput) {
+			let sum = 0
+			for (let idxHidden in neuralNetwork.hiddensOutput) {
+			  sum = sum + neuralNetwork.hiddensOutput[idxHidden] * neuralNetwork.outputsWeight[idxHidden][idxOutput];
+			}
+			neuralNetwork.outputsOutput[idxOutput] = sigmoidFunction(sum);
+		}
+
+		return neuralNetwork.outputsOutput;
+
+	}
+
+	function sigmoidFunction(delta){
+		//return 1 - Math.pow(delta,2);
+		return Math.pow((1 + Math.pow(Math.E, -1 * delta)), -1);
+	}
+
+	function backpropagate(targets, diviation){
+	  diviation = diviation|| 0.5;
+	  var outputDeltas = "0".repeat(neuralNetwork.outputs.length).split("");
+	  var error = 0 ;
+
+	  for (let idx in outputDeltas) {
+		error = targets[idx] - neuralNetwork.outputsOutput[idx];
+		outputDeltas[idx] = sigmoidFunction(neuralNetwork.outputsOutput[idx]) * error;
+		
+	  }
+
+	  var hiddenDeltas = "0".repeat(neuralNetwork.hiddens.length).split("");
+	  for (let idx in hiddenDeltas) {
+		error = 0;
+		for (let idxOutput in neuralNetwork.outputs) {
+			error = error + outputDeltas[idxOutput] * neuralNetwork.outputsWeight[idx][idxOutput];
+		}
+		
+		hiddenDeltas[idx] = sigmoidFunction(neuralNetwork.hiddensOutput[idx]) * error;
+	  }
+
+	  for (let idxHidden in neuralNetwork.hiddens) {
+		for (let idxOutput in neuralNetwork.outputs) {
+		  let change = outputDeltas[idxOutput] * neuralNetwork.hiddensOutput[idxHidden];
+		  		  		  
+		  neuralNetwork.outputsWeight[idxHidden][idxOutput] = neuralNetwork.outputsWeight[idxHidden][idxOutput] + diviation* change;
+		  
+		}
+	  }
+
+	  for (let idxInput in neuralNetwork.inputs) {
+		for (let idxHidden in neuralNetwork.hiddens) {
+		  let change = hiddenDeltas[idxHidden] * neuralNetwork.inputsOutput[idxInput];
+		  neuralNetwork.inputsWeight[idxInput][idxHidden] = neuralNetwork.inputsWeight[idxInput][idxHidden] + diviation* change;
+		}
+	  }
+
+	}
+
+	function getResult(inputs, outputs){
+	  updateNeuralNetwork(inputs, outputs);
+	  return feedforward();
+	}
+
+	function updateDatabase(){
+	  for (var idxInput in neuralNetwork.inputs) {
+		for(var idxHidden in neuralNetwork.hiddens){
+		  setNodesWeights(neuralNetwork.inputs[idxInput], neuralNetwork.hiddens[idxHidden],0,neuralNetwork.inputsWeight[idxInput][idxHidden]);
+		}
+	  }
+
+	  for (var idxHidden in neuralNetwork.hiddens) {
+		for(var idxOutput in neuralNetwork.outputs){
+		  setNodesWeights( neuralNetwork.hiddens[idxHidden], neuralNetwork.outputs[idxOutput],1,neuralNetwork.outputsWeight[idxHidden][idxOutput]);
+		}
+	  }
+	}
+
+	function trainNeuralNetwork( inputs, outputs, selected){
+
+	  createHiddenLayer(inputs, outputs);
+	  updateNeuralNetwork(inputs, outputs);
+	  feedforward();
+	  let targets = "0".repeat(neuralNetwork.outputs.length).split("");
+	  targets[outputs.indexOf(selected)] = 1.0;
+	  backpropagate(targets);
+	  updateDatabase();
+	}
+
+	function basicNetworkSetup(){
+	  createHiddenLayer([1,2],[10,20,30]);
+	  createHiddenLayer([3],[30]);
+	  createHiddenLayer([2,3],[10,30]);
+	  createHiddenLayer([4],[10]);
+	}
+
+	function train(){
+		
+		var output = [0,1,2,3,4];
+		console.info(products);
+	
+		for(var idx = 0, len = output.length; idx < len; idx++){
+			createHiddenLayer([idx],[0,1,2,3,4]);
+		}
+		
+		console.info("Starting ... ");		
+		output.forEach (function(v,i,a){
+			display(getResult([v], output))
+		});
+		
+		console.info("First Training ... ");		
+		
+		/*trainNeuralNetwork([0], output, 1);
+		trainNeuralNetwork([0], output, 3);
+		trainNeuralNetwork([1], output, 0);
+		trainNeuralNetwork([1], output, 3);
+		trainNeuralNetwork([3], output, 0);
+		trainNeuralNetwork([3], output, 1);*/
+		
+		trainNeuralNetwork([0, 1, 3], output, 0);
+		trainNeuralNetwork([0, 1, 3], output, 1);
+		trainNeuralNetwork([0, 1, 3], output, 3);
+		
+		output.forEach (function(v,i,a){
+			display(getResult([v], output))
+		});
+		
+		console.info("Second Training ... ");		
+		
+		/*trainNeuralNetwork([1], output, 3);
+		trainNeuralNetwork([3], output, 1);*/
+		
+		trainNeuralNetwork([1, 3], output, 1);
+		trainNeuralNetwork([1, 3], output, 3);
+		
+		output.forEach (function(v,i,a){
+			display(getResult([v], output))
+		});
+		
+		console.info("Third Training ... ");		
+		
+		trainNeuralNetwork([1], output, 1);
+				
+		output.forEach (function(v,i,a){
+			display(getResult([v], output))
+		});
+		
+		console.info("Fourth Training ... ");		
+		
+		/*trainNeuralNetwork([1], output, 2);
+		trainNeuralNetwork([2], output, 1);
+		*/
+		
+		trainNeuralNetwork([1, 2], output, 1);
+		trainNeuralNetwork([1, 2], output, 2);
+		
+		output.forEach (function(v,i,a){
+			display(getResult([v], output))
+		});
+		
+		console.info("Fifth Training ... ");		
+		
+	
+		
+		trainNeuralNetwork([1, 2, 3], output, 1);
+		trainNeuralNetwork([1, 2, 3], output, 2);
+		trainNeuralNetwork([1, 2, 3], output, 3);
+		
+		output.forEach (function(v,i,a){
+			display(getResult([v], output))
+		});
+	}
+	
+	function newTrain(){
+		
+		var output = [0,1,2,3,4];
+		
+		console.info("Initiate Network ... ");
+		
+		for(var idx = 0, len = output.length; idx < len; idx++){
+			createHiddenLayer([idx], output.filter(function(e){
+				return e !== idx;
+			}));
+		}
+		
+		console.info("Starting ... ");		
+		output.forEach (function(v,i,a){
+			display(getResult([v], output))
+		});
+		
+		console.info("First Training ... ");		
+		
+		trainNeuralNetwork([0,3], output, 1);
+		/*var values = [0, 1, 3];
+		for(var idx = 0, len = values.length; idx < len; idx++){
+			console.info(values.filter(function(e, i){
+				return i !== idx;
+			}));
+			trainNeuralNetwork(values.filter(function(e, i){
+				return i !== idx;
+			}), output, idx);
+		}*/
+		
+		output.forEach (function(v,i,a){
+			display(getResult([v], output))
+		});
+		
+		console.info("Second Training ... ");		
+		
+		trainNeuralNetwork([3], output, 1);
+		/*
+		values = [ 1, 3];
+		for(var idx = 0, len = values.length; idx < len; idx++){
+			console.info(values.filter(function(e, i){
+				return i !== idx;
+			}));
+			trainNeuralNetwork(values.filter(function(e, i){
+				return i !== idx;
+			}), output, idx);
+		}*/
+		
+		output.forEach (function(v,i,a){
+			display(getResult([v], output))
+		});
+		
+		console.info("Third Training ... ");		
+		
+		trainNeuralNetwork([1], output, 1);
+				
+		output.forEach (function(v,i,a){
+			display(getResult([v], output))
+		});
+		
+		console.info("Fourth Training ... ");		
+		
+		trainNeuralNetwork([2], output, 1);
+		/*
+		values = [1, 2];
+		for(var idx = 0, len = values.length; idx < len; idx++){
+			console.info(values.filter(function(e, i){
+				return i !== idx;
+			}));
+			trainNeuralNetwork(values.filter(function(e, i){
+				return i !== idx;
+			}), output, idx);
+		}*/
+		
+		output.forEach (function(v,i,a){
+			display(getResult([v], output))
+		});
+		
+		console.info("Fifth Training ... ");		
+		
+
+	/*	values = [1, 2, 3];
+		for(var idx = 0, len = values.length; idx < len; idx++){
+			console.info(values.filter(function(e, i){
+				return i !== idx;
+			}));
+			trainNeuralNetwork(values.filter(function(e, i){
+				return i !== idx;
+			}), output, idx);
+		}
+		*/
+		
+		trainNeuralNetwork([2,3], output, 1);
+		
+		output.forEach (function(v,i,a){
+			display(getResult([v], output))
+		});
+	}
+	
+	function display(values) {
+		var result = "";
+		var x = [];
+		for(var idx in values){
+		//	result += products[idx] + " -> ";
+		x.push({id:idx, value:values[idx]})
+		}
+		
+		x.sort(function(p,n){ return p.value > n.value ? -1: (p.value==n.value?0:1);});
+		
+		for(var v of x){
+			result += products[v.id] + " -> ";
+		//x.push({id:idx, value:values[idx]})
+		}
+		
+		
+		
+		console.info( result.substr(0,result.length-4));
+	}
+	
+	var products = {
+		0:"product A",
+		1:"product B",
+		2:"product C",
+		3:"product D",
+		4:"product E"
+	};
+	
+</script>
