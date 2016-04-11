@@ -1,0 +1,131 @@
+<script>
+'use strict';
+	
+	/** Create a NeuralNetwork Object
+	 * @class 
+	 */	
+	var NN = function(layercount, inputcount, outputcount){
+		this._weights = [];
+		this._outputs = [];
+		
+		for(var layerIndex = 0; layerIndex < layercount-1; layerIndex++ ){
+			this._weights[layerIndex] = {};
+			for(var inputIndex = 0; inputIndex < inputcount; inputIndex++ ){
+				var outCount = ((layerIndex < layercount - 2)?inputcount:outputcount);
+				this._weights[layerIndex].count = outCount;
+				for(var outputIndex = 0; outputIndex < outCount; outputIndex++ ){
+					this._weights[layerIndex][`${inputIndex}_${outputIndex}`] = Math.random();
+				}
+			}
+		}
+	};
+	
+	/** Returns calculated sigmoid function on passed delta
+	 * @method sigmoid
+	 * @memberof NN
+	 * @static
+	 * @param {number} delta value
+	 * @returns {number}
+	 */	
+	NN.sigmoid = function(delta){
+		return Math.pow((1 + Math.pow(Math.E, -1 * delta)), -1);
+	}
+	
+	/** Returns the value for the passed input values
+	 * @method getResult
+	 * @memberof NN
+	 * @param {number[]} input values
+	 * @returns {number[]}
+	 */	
+	NN.prototype.getResult = function (inputs){
+		return this._feedforward(inputs);
+	}
+	
+	/** trains the NeuralNetwork with the given input and selected output
+	 * @method train
+	 * @memberof NN
+	 * @param {number[]} input values to train 
+	 * @param {number[]} outputindex selected output value 
+	 * @returns {void}
+	 */	
+	NN.prototype.train = function (inputs, outputindex){
+		var targets = "0".repeat(this._outputs[1].count).split("");
+		targets[outputindex] = 1;
+		this._feedforward(inputs);
+		this._backpropagate(targets);
+	}
+	
+	/** feed inputs into the Network and all outputs calculates 
+	 * @method _feedforward
+	 * @memberof NN
+	 * @param {number[]} input values to push into the Network
+	 * @returns {number[]}
+	 */	
+	NN.prototype._feedforward = function (inputs){	
+		this._outputs[0] = {};
+		var sum = 0;
+		this._outputs[0].count = this._weights[0].count;
+		for(var outputIndex = 0 ; outputIndex < this._weights[0].count ; outputIndex++){
+			sum = 0;
+			for(var inputsIndex = 0 ; inputsIndex < inputs.length ; inputsIndex++){
+				sum = sum + (inputs[inputsIndex] * this._weights[0][`${inputsIndex}_${outputIndex}`]);
+			}
+			this._outputs[0][outputIndex] = NN.sigmoid(sum);
+		}
+		
+		this._outputs[1] = {};
+		this._outputs[1].count = this._weights[1].count;
+		for(var outputIndex = 0 ; outputIndex < this._weights[1].count ; outputIndex++){
+			sum = 0;
+			for(var inputsIndex = 0 ; inputsIndex < this._outputs[0].count ; inputsIndex++){
+				sum = sum + (this._outputs[0][inputsIndex] * this._weights[1][`${inputsIndex}_${outputIndex}`]);
+			}
+			this._outputs[1][outputIndex] = NN.sigmoid(sum);
+		}
+		
+		return this._outputs[1];
+	}
+
+	/** Backpropagates the selected value through the NeuralNetwork
+	 * @method _backpropagate
+	 * @memberof NN
+	 * @param {number[]} input values to train 
+	 * @param {number[]} optional parameter for the diviation 
+	 * @returns {void}
+	 */	
+	NN.prototype._backpropagate = function (targets, diviation){
+		diviation = diviation || 0.5;
+		var outputError = [];
+		var error = 0;
+		for(var index = 0; index < this._outputs[1].count; index++){
+			error = targets[index] - this._outputs[1][index];
+			outputError[index] = NN.sigmoid(this._outputs[1][index]) * error;
+		}
+		
+		var hiddenErrors = [];
+		for(var inputsIndex = 0; inputsIndex < this._outputs[0].count; inputsIndex++){
+			error = 0;
+			
+			for(var outputIndex = 0 ; outputIndex <  outputError.length ; outputIndex++){
+				error = error + outputError[outputIndex] * this._weights[1][`${inputsIndex}_${outputIndex}`];
+			}
+			
+			hiddenErrors[inputsIndex] = NN.sigmoid(this._outputs[0][inputsIndex]) * error;
+		}
+		
+		for(var index = 0;index < this._weights[1].count; index++){
+			var change = outputError[index] * this._outputs[1][index];
+			for(var innerIndex = 0; innerIndex < this._outputs[0].count; innerIndex++){
+				this._weights[1][`${innerIndex}_${index}`] = this._weights[1][`${innerIndex}_${index}`] + diviation * change;
+			}
+		}
+		
+		for(var index = 0;index < this._weights[0].count; index++){
+			var change = hiddenErrors[index] * this._outputs[0][index];
+			for(var innerIndex = 0; innerIndex < this._outputs[0].count; innerIndex++){
+				this._weights[0][`${innerIndex}_${index}`] = this._weights[0][`${innerIndex}_${index}`] + diviation * change;
+			}
+		}
+	}
+	
+</script>
