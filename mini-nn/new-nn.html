@@ -1,0 +1,887 @@
+<div id="status"> </div>
+<script>
+'use strict';
+
+/** Create a NeuralNetwork Object
+ * @class
+ */
+var NN = function(nodecount, outputcount){
+  this._outputCount = outputcount;
+  this._nodeCount = nodecount;
+  this._inputToHidden = createMatrix(nodecount, nodecount, 0.2);
+  this._hiddenToOutput = createMatrix(nodecount, outputcount, 0.01);
+};
+
+/** Returns an N x M Matrix with th past initialvalue
+ * @method createMatrix
+ * @memberof NN
+ * @static
+ * @param {number} number of rows
+ * @param {number} number of columns
+ * @param {number} initvalue
+ * @returns {object[]}
+ */
+function createMatrix(n, m, initvalue){
+    return "0".repeat(n)
+      .split("")
+      .map(function(){return (initvalue+";").repeat(m).split(";",m).map(c=>c*Math.random());});
+}
+
+/** Returns calculated sigmoid function on passed delta
+ * @method sigmoid
+ * @memberof NN
+ * @static
+ * @param {number} delta value
+ * @returns {number}
+ */
+NN.sigmoid = function(delta){
+  return Math.pow((1 + Math.pow(Math.E, -1 * delta)), -1);
+}
+
+/** Returns the value for the passed input values
+ * @method ult
+ * @memberof NN
+ * @param {number[]} input values
+ * @returns {number[]}
+ */
+NN.prototype.getResult = function (inputs){
+  return this._feedforward(inputs)[1];
+}
+
+/** feed inputs into the Network and all outputs calculates
+ * @method _feedforward
+ * @memberof NN
+ * @param {number[]} input values to push into the Network
+ * @returns {number[]}
+ */
+NN.prototype._feedforward = function (inputs){
+  var sum = 0;
+
+  if(inputs.length != this._nodeCount){
+    throw new Error("Input - Count doesn't match node - Count!");
+  }
+
+  let hiddenNodes = [];
+
+  for(var hiddenIdx = 0 ; hiddenIdx <  this._nodeCount; hiddenIdx++){
+    sum = 0;
+    for(var inputIdx = 0 ; inputIdx < this._nodeCount ; inputIdx++){
+      sum = sum + inputs[inputIdx] * this._inputToHidden[inputIdx][hiddenIdx];
+    }
+    hiddenNodes[hiddenIdx] = NN.sigmoid(sum);
+  }
+
+  let outputNodes = [];
+
+  for(var outputIdx = 0 ; outputIdx <  this._outputCount; outputIdx++){
+    sum = 0;
+    for(var hiddenIdx = 0 ; hiddenIdx < this._nodeCount ; hiddenIdx++){
+      sum = sum + (hiddenNodes[hiddenIdx] * this._hiddenToOutput[hiddenIdx][outputIdx]);
+    }
+    outputNodes[outputIdx] = NN.sigmoid(sum);
+  }
+
+  return [hiddenNodes, outputNodes];
+}
+
+
+/** Backpropagates the selected value through the NeuralNetwork
+ * @method _backpropagate
+ * @memberof NN
+ * @param {number[]} inputNodes values to train
+ * @param {number[]} hiddenNodes values to train
+ * @param {number[]} outputNodes values to train
+ * @param {number[]} targetValues values to train
+ * @param {number} optional parameter for the diviation
+ * @returns {void}
+ */
+NN.prototype._backpropagate = function (inputnodes, hiddennodes, outputnodes, targetvalues, diviation){
+
+  diviation = diviation || 0.5;
+  let outputError = [];
+  let error = 0;
+
+  for(let idx = 0; idx < this._outputCount; idx++){
+    error = targetvalues[idx] - outputnodes[idx];
+    console.info( targetvalues[idx] , outputnodes[idx]);
+    outputError[idx] = NN.sigmoid(outputnodes[idx]) * error;
+  }
+
+  let hiddenErrors = [];
+  for(let hiddenIdx = 0; hiddenIdx < this._nodeCount; hiddenIdx++){
+    error = 0;
+      console.info( outputError);
+    for(let outputIdx = 0 ; outputIdx < outputError.length ; outputIdx++){
+      error = error + outputError[outputIdx] * this._hiddenToOutput[hiddenIdx][outputIdx];
+      console.info(error , outputError[outputIdx], this._hiddenToOutput[hiddenIdx][outputIdx]);
+    }
+
+    hiddenErrors[hiddenIdx] = NN.sigmoid(hiddennodes[hiddenIdx]) * error;
+  }
+
+console.info(outputError);
+
+  for(let hiddenIdx = 0; hiddenIdx < this._nodeCount; hiddenIdx++){
+    for(let outputIdx = 0; outputIdx < this._outputCount; outputIdx++){
+      let change = outputError[outputIdx] * hiddennodes[hiddenIdx];
+      console.info("-->", hiddenIdx , outputIdx, this._hiddenToOutput[hiddenIdx][outputIdx], diviation , change);
+      this._hiddenToOutput[hiddenIdx][outputIdx] = this._hiddenToOutput[hiddenIdx][outputIdx] + diviation * change;
+    }
+  }
+console.warn(this._hiddenToOutput);
+console.warn(outputError);
+
+  for(let inputIdx = 0; inputIdx < this._nodeCoun; inputIdx++){
+    for(var hiddenIdx = 0; hiddenIdx < this._nodeCoun; hiddenIdx++){
+      let change = hiddenErrors[hiddenIdx] * inputnodes[inputIdx];
+      this._inputToHidden[inputIdx][hiddenIdx] = this._inputToHidden[inputIdx][hiddenIdx] + diviation * change;
+    }
+  }
+
+}
+
+	/** trains the NeuralNetwork with the given input and selected output
+	 * @method train
+	 * @memberof NN
+	 * @param {number[]} input values to train
+	 * @param {number[]} outputindex selected output value
+	 * @returns {void}
+	 */
+	NN.prototype.train = function (inputs, outputindex){
+    let hiddenNodes, outputNodes;
+    let targets = "0".repeat(this._nodeCount).split("");
+		targets[outputindex] = 1;
+		[hiddenNodes, outputNodes] = this._feedforward(inputs);
+    console.info(hiddenNodes, outputNodes);
+		this._backpropagate(inputs, hiddenNodes, outputNodes, targets);
+	}
+
+</script>
+
+
+<script>
+//insertWeather();
+function insertWeather(){
+      db.transaction(function (tx) {
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("02.05.2015"),"10.3","15.2","9","7.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("03.05.2015"),"8.6","13.6","10","1.65"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("04.05.2015"),"11.6","23.3","9","3.65"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("05.05.2015"),"14.4","25.8","11","1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("06.05.2015"),"13.7","20.9","16","1.8"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("07.05.2015"),"12.2","21.4","17","0.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("08.05.2015"),"11.2","23.4","10","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("09.05.2015"),"12.5","21","16","0.85"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("10.05.2015"),"14.2","20.6","20","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("11.05.2015"),"8.7","19.9","10","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("12.05.2015"),"6.4","25.5","9","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("13.05.2015"),"13.8","22.7","6","0.65"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("14.05.2015"),"13.3","20.6","14","6.5"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("15.05.2015"),"12.2","16","10","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("16.05.2015"),"10.4","23.1","9","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("17.05.2015"),"14.9","19.6","16","0.45"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("18.05.2015"),"8.5","24.5","13","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("19.05.2015"),"12.7","23.1","9","0.45"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("20.05.2015"),"10.3","19","14","10.55"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("21.05.2015"),"9.6","13.1","16","4.45"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("22.05.2015"),"12.2","15.2","18","3"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("23.05.2015"),"10.8","12.2","15","53.25"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("24.05.2015"),"10.9","14.3","11","1.6"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("25.05.2015"),"11.9","19.5","13","0.35"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("26.05.2015"),"11.5","15.6","19","21.7"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("27.05.2015"),"9.8","14.8","19","6.4"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("28.05.2015"),"10.4","18","11","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("29.05.2015"),"7.2","24.1","9","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("30.05.2015"),"13.6","24.8","8","1.75"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("31.05.2015"),"12.5","23.3","10","1.6"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("01.06.2015"),"15","26.3","9","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("02.06.2015"),"16.5","28.3","10","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("03.06.2015"),"17","31.2","9","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("04.06.2015"),"20.2","27","14","0.1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("05.06.2015"),"15.7","26.7","10","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("06.06.2015"),"15.5","29.2","10","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("07.06.2015"),"17.1","29.6","8","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("08.06.2015"),"18.1","29.2","9","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("09.06.2015"),"17.3","24.9","13","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("10.06.2015"),"13.6","25.4","12","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("11.06.2015"),"15.1","27.2","8","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("12.06.2015"),"17.3","31.7","14","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("13.06.2015"),"18.2","30","7","2.1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("14.06.2015"),"16.9","29.9","8","3.4"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("15.06.2015"),"16.3","22.2","12","1.15"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("16.06.2015"),"15.4","21.2","14","0.1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("17.06.2015"),"13","17.9","13","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("18.06.2015"),"10.7","23.3","13","0.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("19.06.2015"),"13.4","18.2","15","1.6"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("20.06.2015"),"11.3","16.2","17","6"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("21.06.2015"),"11","18.1","17","0.8"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("22.06.2015"),"10.4","25.3","11","7.6"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("23.06.2015"),"12.6","19.7","12","14.4"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("24.06.2015"),"12.1","20.6","13","0.55"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("25.06.2015"),"10.3","22.5","9","0.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("26.06.2015"),"13.4","25.7","10","0.1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("27.06.2015"),"18.4","24.8","12","6.3"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("28.06.2015"),"15.4","24.6","20","22.25"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("29.06.2015"),"12.8","24.3","7","0.15"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("30.06.2015"),"13.1","28.2","6","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("01.07.2015"),"15.5","29.8","5","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("02.07.2015"),"17.9","31.3","8","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("03.07.2015"),"18.8","30.8","11","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("04.07.2015"),"18.6","32.2","9","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("05.07.2015"),"18.6","35.6","8","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("06.07.2015"),"20.1","33.3","17","0.15"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("07.07.2015"),"21.2","36.1","8","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("08.07.2015"),"16.6","29.5","17","29.3"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("09.07.2015"),"15.1","23.9","20","7.75"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("10.07.2015"),"14.3","24.5","14","0.3"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("11.07.2015"),"11.9","27.1","7","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("12.07.2015"),"14.9","30.9","10","0.05"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("13.07.2015"),"16.6","24.2","19","3.7"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("14.07.2015"),"18","24.1","15","5.8"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("15.07.2015"),"20.3","27.8","12","0.25"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("16.07.2015"),"16.8","32.3","7","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("17.07.2015"),"20.9","34.8","6","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("18.07.2015"),"22.4","34.9","10","0.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("19.07.2015"),"22.7","36.9","8","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("20.07.2015"),"21.5","30.5","15","2.15"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("21.07.2015"),"20.4","34.5","7","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("22.07.2015"),"22.7","36.8","10","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("23.07.2015"),"25.7","29.7","13","0.55"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("24.07.2015"),"21.3","33.5","9","0.05"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("25.07.2015"),"19.3","29.1","15","0.45"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("26.07.2015"),"16.3","25.4","15","3.85"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("27.07.2015"),"15.8","25","9","10.4"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("28.07.2015"),"15","26.2","11","0.15"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("29.07.2015"),"14.2","22.5","10","10.45"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("30.07.2015"),"15.8","24.3","12","2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("31.07.2015"),"17.2","25.4","9","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("01.08.2015"),"12.8","28","13","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("02.08.2015"),"17.7","21.9","7","3.5"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("03.08.2015"),"18","29.3","6","0.6"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("04.08.2015"),"18.7","32","10","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("05.08.2015"),"22.4","32.9","12","0.05"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("06.08.2015"),"20.3","35","7","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("07.08.2015"),"21.1","35.9","9","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("08.08.2015"),"21.7","36.5","12","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("09.08.2015"),"21.2","36.6","10","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("10.08.2015"),"20.2","35.2","9","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("11.08.2015"),"20.8","35.7","7","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("12.08.2015"),"20.9","36.3","7","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("13.08.2015"),"22.9","36.2","7","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("14.08.2015"),"21.8","35.8","13","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("15.08.2015"),"23.6","32.4","9","0.15"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("16.08.2015"),"19.8","29.4","11","2.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("17.08.2015"),"17.2","20.7","21","50.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("18.08.2015"),"15.8","20","15","14.9"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("19.08.2015"),"14.8","18.4","12","9"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("20.08.2015"),"14.6","19.7","11","27.35"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("21.08.2015"),"16.5","23.4","10","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("22.08.2015"),"14.5","23.8","8","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("23.08.2015"),"13.8","23.4","16","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("24.08.2015"),"16.3","28.7","19","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("25.08.2015"),"16.3","21.9","14","0.6"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("26.08.2015"),"11.6","25.9","7","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("27.08.2015"),"13.7","29.1","8","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("28.08.2015"),"17.3","31.5","8","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("29.08.2015"),"19","33.1","6","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("30.08.2015"),"19.4","35.3","10","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("31.08.2015"),"18.2","34.8","9","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("01.09.2015"),"17.7","32.8","8","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("02.09.2015"),"16.2","25.7","17","5.3"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("03.09.2015"),"14","22.6","7","1.6"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("04.09.2015"),"14.8","22.6","13","19.9"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("05.09.2015"),"12.9","18.1","13","3.85"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("06.09.2015"),"12.6","17.6","22","0.4"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("07.09.2015"),"11.7","15.8","22","0.7"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("08.09.2015"),"10.9","18.7","14","0.4"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("09.09.2015"),"10.8","15.7","8","4.45"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("10.09.2015"),"10.1","20.2","7","4.6"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("11.09.2015"),"13.2","18.9","11","0.55"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("12.09.2015"),"13.2","23.5","9","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("13.09.2015"),"13","23.9","17","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("14.09.2015"),"16.2","21.9","13","5.7"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("15.09.2015"),"13.4","20.7","8","0.1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("16.09.2015"),"13.2","28.2","8","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("17.09.2015"),"15.4","33.2","12","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("18.09.2015"),"15.7","24.4","10","2.05"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("19.09.2015"),"14.1","21.9","12","3.1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("20.09.2015"),"14","20.1","19","10.05"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("21.09.2015"),"10.7","18.9","12","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("22.09.2015"),"7.5","22.2","12","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("23.09.2015"),"11.7","17.3","15","0.65"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("24.09.2015"),"11.4","15.4","22","0.6"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("25.09.2015"),"12.6","15.4","24","31"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("26.09.2015"),"12.9","16.3","16","22.75"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("27.09.2015"),"11.7","16.6","15","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("28.09.2015"),"11.4","17","18","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("29.09.2015"),"9.7","15.8","14","0.1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("30.09.2015"),"9","13.6","7","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("01.10.2015"),"5.8","16.1","8","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("02.10.2015"),"5.1","18.7","14","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("03.10.2015"),"10.9","20.6","15","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("04.10.2015"),"11.1","16.8","6","0.05"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("05.10.2015"),"12.4","20","10","0.1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("06.10.2015"),"10","17.8","9","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("07.10.2015"),"13.7","15","8","24.05"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("08.10.2015"),"12.9","14.3","10","11.1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("09.10.2015"),"11.2","15.5","9","1.9"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("10.10.2015"),"6.9","10.4","7","7.9"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("11.10.2015"),"4.5","8.5","15","17.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("12.10.2015"),"1.6","7.7","13","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("13.10.2015"),"0.5","7.6","10","0.05"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("14.10.2015"),"6.9","9","9","34.65"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("15.10.2015"),"9.2","12","13","29.85"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("16.10.2015"),"7.1","12","7","16.55"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("17.10.2015"),"6.1","11.7","12","1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("18.10.2015"),"4.2","8.8","5","0.3"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("19.10.2015"),"6.7","9.2","10","29.55"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("20.10.2015"),"7.5","10.8","16","32.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("21.10.2015"),"7.8","11.2","15","0.65"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("22.10.2015"),"7.8","11.5","11","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("23.10.2015"),"7.8","14.3","15","0.95"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("24.10.2015"),"3.8","14.2","8","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("25.10.2015"),"5","14.3","4","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("26.10.2015"),"6.8","13.7","8","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("27.10.2015"),"9.1","13.5","18","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("28.10.2015"),"8.5","10.3","18","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("29.10.2015"),"8.7","11","8","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("30.10.2015"),"6.5","13.1","6","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("31.10.2015"),"4.4","13.4","11","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("01.11.2015"),"5","13","16","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("02.11.2015"),"1","11.3","8","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("03.11.2015"),"0.7","10.3","7","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("04.11.2015"),"2.1","6.4","5","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("05.11.2015"),"0.4","14.2","4","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("06.11.2015"),"2.7","12.9","4","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("07.11.2015"),"6.4","15.9","13","0.7"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("08.11.2015"),"10.2","20.5","13","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("09.11.2015"),"8.6","17.9","13","0.5"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("10.11.2015"),"15.7","18.6","26","0.15"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("11.11.2015"),"13.1","19.3","19","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("12.11.2015"),"6.9","14.6","17","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("13.11.2015"),"4.3","12.1","5","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("14.11.2015"),"9.8","12.8","18","0.65"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("15.11.2015"),"8.5","13.9","18","21.65"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("16.11.2015"),"10.3","16.9","20","8.05"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("17.11.2015"),"13.9","17.3","21","0.15"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("18.11.2015"),"11.5","19.6","20","0.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("19.11.2015"),"13.2","17.8","20","0.1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("20.11.2015"),"8.1","18","13","19.75"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("21.11.2015"),"4","7.9","14","19.85"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("22.11.2015"),"2.1","5","17","0.8"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("23.11.2015"),"-1","5.6","13","0.1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("24.11.2015"),"-2.2","4.9","7","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("25.11.2015"),"-4","3.4","8","0.05"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("26.11.2015"),"0.3","3.8","12","1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("27.11.2015"),"2.7","4.2","12","0.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("28.11.2015"),"1.3","5.4","17","0.25"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("29.11.2015"),"3.2","9.7","26","0.4"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("30.11.2015"),"7.6","12.2","37","19.65"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("01.12.2015"),"6.8","12.1","32","31.9"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("02.12.2015"),"5.7","11.3","14","10"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("03.12.2015"),"3.2","10.9","6","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("04.12.2015"),"1.9","9.4","5","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("05.12.2015"),"3.5","10.9","6","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("06.12.2015"),"2","3.7","10","0.4"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("07.12.2015"),"1","4.3","6","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("08.12.2015"),"1.5","2.9","13","0.55"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("09.12.2015"),"2.3","5.6","10","4"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("10.12.2015"),"0.4","8","13","4.05"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("11.12.2015"),"-2","0.6","3","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("12.12.2015"),"0.1","10.2","20","0.45"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("13.12.2015"),"0.6","10.1","15","0.1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("14.12.2015"),"3.7","5.6","8","0.4"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("15.12.2015"),"3.2","5.1","6","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("16.12.2015"),"2.6","4.5","6","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("17.12.2015"),"3.2","4.2","10","11.8"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("18.12.2015"),"2.8","4.4","6","0.25"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("19.12.2015"),"2.7","5.2","6","0.25"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("20.12.2015"),"3","4.7","13","0.5"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("21.12.2015"),"2.6","4.7","9","0.6"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("22.12.2015"),"2.7","14.8","14","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("23.12.2015"),"2.1","13.7","9","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("24.12.2015"),"3.2","8.6","6","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("25.12.2015"),"2.4","4.7","5","0.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("26.12.2015"),"0.5","10.2","4","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("27.12.2015"),"-0.6","3.6","4","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("28.12.2015"),"-1","5.7","4","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("29.12.2015"),"0.9","6","8","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("30.12.2015"),"-1.8","2.4","11","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("31.12.2015"),"-4.7","-0.2","17","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("01.01.2016"),"-4.1","1.7","5","1.35"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("02.01.2016"),"-4.4","1.7","14","0.7"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("03.01.2016"),"-6","-4.6","16","0.55"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("04.01.2016"),"-7.7","-4.9","18","5.35"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("05.01.2016"),"-7.2","-5.6","9","6.45"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("06.01.2016"),"-5.4","-2","8","0.35"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("07.01.2016"),"-4.3","0.7","6","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("08.01.2016"),"-2.8","8.9","9","0.15"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("09.01.2016"),"-0.8","1.5","6","1.35"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("10.01.2016"),"0.9","3.5","6","9.6"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("11.01.2016"),"1","8","11","2.15"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("12.01.2016"),"5.7","9.7","27","0.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("13.01.2016"),"4.4","7.2","31","0.4"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("14.01.2016"),"1.4","6.9","15","0.45"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("15.01.2016"),"0.6","5.8","18","0.25"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("16.01.2016"),"0.1","1.8","18","0.65"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("17.01.2016"),"-3.4","-0.2","13","0.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("18.01.2016"),"-6.2","-0.8","9","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("19.01.2016"),"-6.4","-2.7","5","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("20.01.2016"),"-7","0.5","15","0.25"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("21.01.2016"),"-5.6","0.6","16","2.4"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("22.01.2016"),"-9.5","-1.6","6","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("23.01.2016"),"-7.1","-0.4","7","18.05"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("24.01.2016"),"1.5","7","12","0.45"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("25.01.2016"),"1","9.2","14","15.9"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("26.01.2016"),"3.9","12.6","14","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("27.01.2016"),"-0.5","15.1","9","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("28.01.2016"),"4.6","16","10","0.3"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("29.01.2016"),"5.3","10.7","12","18.8"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("30.01.2016"),"0.9","5.7","5","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("31.01.2016"),"1.8","9.5","20","3.85"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("01.02.2016"),"4.5","13.5","15","15.8"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("02.02.2016"),"6.1","12.5","15","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("03.02.2016"),"2.7","11.8","16","20.4"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("04.02.2016"),"2.6","6.3","22","0.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("05.02.2016"),"2.7","6.3","13","2.75"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("06.02.2016"),"0.7","9.2","8","0.15"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("07.02.2016"),"3.1","13.6","9","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("08.02.2016"),"7.5","11.7","11","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("09.02.2016"),"7.1","13.1","16","1.1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("10.02.2016"),"3.3","11.5","23","19.55"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("11.02.2016"),"1.8","6.8","26","0.15"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("12.02.2016"),"-1.1","5.3","8","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("13.02.2016"),"2.6","7.5","9","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("14.02.2016"),"1.8","8.4","10","12.25"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("15.02.2016"),"5.5","8.2","15","10.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("16.02.2016"),"3.8","7.3","13","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("17.02.2016"),"2.9","5","13","1.85"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("18.02.2016"),"3.1","5","8","13.25"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("19.02.2016"),"2.4","6.5","18","43.6"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("20.02.2016"),"3.4","9.6","15","5.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("21.02.2016"),"5.5","14.2","28","18.3"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("22.02.2016"),"11.5","19.6","19","0.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("23.02.2016"),"3.5","16.1","23","7.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("24.02.2016"),"1.7","8.6","18","10"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("25.02.2016"),"-0.1","6","9","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("26.02.2016"),"0.4","6.5","10","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("27.02.2016"),"-0.1","7.4","18","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("28.02.2016"),"4.3","10.2","13","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("29.02.2016"),"6.5","8","9","22.65"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("01.03.2016"),"1.9","7.4","28","5.5"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("02.03.2016"),"1.3","8.7","12","0.55"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("03.03.2016"),"2.4","7.1","14","8.3"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("04.03.2016"),"2.2","8.3","17","7.3"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("05.03.2016"),"1.1","12.7","9","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("06.03.2016"),"5.6","10.8","17","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("07.03.2016"),"3.4","5.9","9","3.5"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("08.03.2016"),"1.8","5.9","9","2.8"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("09.03.2016"),"0.3","6.1","8","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("10.03.2016"),"-0.3","9.2","10","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("11.03.2016"),"5.8","7.5","19","0.1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("12.03.2016"),"4.8","7.8","14","0.15"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("13.03.2016"),"4.3","6.4","15","0.1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("14.03.2016"),"1.2","9.6","14","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("15.03.2016"),"1.3","4.3","15","20.9"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("16.03.2016"),"0.9","7","11","5.65"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("17.03.2016"),"-0.7","10.3","7","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("30.03.2016"),"11.6","16.2","7","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("31.03.2016"),"9","22.8","8","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("01.04.2016"),"7.5","14.1","10","-0.1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("02.04.2016"),"3.6","14.5","14","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("03.04.2016"),"7.2","20.8","13","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("04.04.2016"),"7.6","22.1","6","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("05.04.2016"),"9.4","23.5","6","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("06.04.2016"),"13.1","18.6","17","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("07.04.2016"),"10.4","17.3","8","0.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("08.04.2016"),"8.3","13","14","7.9"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("09.04.2016"),"7.5","9","14","6.1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("10.04.2016"),"7.7","11.1","16","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("11.04.2016"),"6","12.1","10","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("12.04.2016"),"9.5","16.3","8","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("13.04.2016"),"6.6","20.1","8","8"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("14.04.2016"),"10.4","14.8","24","13.5"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("15.04.2016"),"5.5","18.3","10","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("16.04.2016"),"8.9","21.7","7","-0.1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("17.04.2016"),"8.7","22.2","9","-0.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("18.04.2016"),"9.1","13.2","12","4.3"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("19.04.2016"),"8","16.2","17","0.1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("20.04.2016"),"8","15.5","16","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("21.04.2016"),"3.7","17.8","7","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("22.04.2016"),"5.4","20.4","8","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("23.04.2016"),"7.7","17.3","7","-0.3"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("24.04.2016"),"3.9","11.3","20","2.1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("25.04.2016"),"3.3","9.2","19","0.1"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("26.04.2016"),"0.7","15.8","12","0.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("27.04.2016"),"4.3","7.4","13","1.8"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("28.04.2016"),"1.1","10.7","12","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("29.04.2016"),"0.4","15.4","5","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("30.04.2016"),"2.9","19.2","9","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("01.05.2016"),"6.9","17.3","11","-0.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("02.05.2016"),"11.1","19.3","12","0.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("03.05.2016"),"10.4","16.2","17","8.8"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("04.05.2016"),"8.3","10.8","26","31.6"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("05.05.2016"),"8.3","17.4","15","-0.2"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("06.05.2016"),"9","22.4","6","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("07.05.2016"),"8.6","22.9","7","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("08.05.2016"),"10.1","20.8","10","0"]);
+      tx.executeSql('INSERT INTO WeatherData VALUES (?, ?, ?, ?, ?)', [getDateTimeFromString("09.05.2016"),"12.1","12.1","4","0"]);
+
+      });
+  }
+</script>
+
+<script>
+//insertStock();
+function insertStock(){
+    db.transaction(function (tx) {
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("01.04.2015"),"10.40","10.50","10.34","10.49","21716"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("02.04.2015"),"10.41","10.50","10.39","10.46","13731"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("07.04.2015"),"10.50","10.55","10.41","10.55","41390"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("08.04.2015"),"10.50","10.55","10.44","10.50","28372"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("09.04.2015"),"10.55","10.55","10.40","10.50","12160"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("10.04.2015"),"10.47","10.54","10.41","10.50","14702"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("13.04.2015"),"10.55","10.55","10.44","10.50","26263"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("14.04.2015"),"10.50","10.50","10.43","10.50","14286"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("15.04.2015"),"10.48","10.50","10.39","10.47","65737"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("16.04.2015"),"10.50","10.50","10.43","10.48","257689"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("17.04.2015"),"10.43","10.49","10.39","10.45","21294"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("20.04.2015"),"10.40","10.50","10.33","10.41","23466"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("21.04.2015"),"10.45","10.50","10.39","10.46","7945"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("22.04.2015"),"10.40","10.42","10.26","10.26","28130"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("23.04.2015"),"10.25","10.25","10.16","10.23","58541"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("24.04.2015"),"10.16","10.38","10.13","10.38","17119"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("27.04.2015"),"10.45","10.45","10.22","10.30","17926"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("28.04.2015"),"10.25","10.39","10.23","10.28","12821"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("29.04.2015"),"10.21","10.40","10.21","10.25","26403"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("30.04.2015"),"10.20","10.28","10.14","10.17","16241"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("04.05.2015"),"10.26","10.44","10.16","10.40","30854"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("05.05.2015"),"10.38","10.39","10.30","10.38","9781"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("06.05.2015"),"10.26","10.48","10.21","10.38","38325"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("07.05.2015"),"10.26","10.44","10.26","10.43","20265"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("08.05.2015"),"10.35","10.49","10.31","10.49","20478"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("11.05.2015"),"10.32","10.50","10.32","10.43","50056"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("12.05.2015"),"10.36","10.46","10.36","10.43","19335"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("13.05.2015"),"10.46","10.50","10.33","10.37","27171"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("15.05.2015"),"10.36","10.45","10.30","10.45","27910"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("18.05.2015"),"10.40","10.45","10.32","10.43","12263"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("19.05.2015"),"10.43","10.45","10.34","10.44","25890"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("20.05.2015"),"10.34","10.42","10.33","10.42","32021"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("21.05.2015"),"10.36","10.45","10.35","10.45","6733"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("22.05.2015"),"10.43","10.45","10.32","10.44","13181"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("26.05.2015"),"10.40","10.44","10.26","10.44","19449"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("27.05.2015"),"10.38","10.45","10.30","10.44","18565"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("28.05.2015"),"10.30","10.41","10.21","10.26","26801"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("29.05.2015"),"10.45","10.45","10.17","10.28","28809"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("01.06.2015"),"10.47","10.47","10.23","10.28","10448"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("02.06.2015"),"10.35","10.41","10.26","10.41","26190"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("03.06.2015"),"10.31","10.45","10.31","10.40","16047"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("05.06.2015"),"10.35","10.40","10.18","10.30","20373"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("08.06.2015"),"10.36","10.36","10.14","10.18","28630"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("09.06.2015"),"10.10","10.18","10.10","10.12","18493"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("10.06.2015"),"10.11","10.21","10.11","10.21","15212"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("11.06.2015"),"10.22","10.22","10.10","10.14","15958"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("12.06.2015"),"10.10","10.22","10.05","10.07","23381"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("15.06.2015"),"10.10","10.10","9.91","9.98","43857"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("16.06.2015"),"10.10","10.10","9.89","10.00","16495"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("17.06.2015"),"9.93","10.06","9.93","9.99","28538"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("18.06.2015"),"10.09","10.10","9.93","10.03","31986"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("19.06.2015"),"9.89","10.09","9.85","9.90","54355"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("22.06.2015"),"9.90","10.19","9.90","10.19","19338"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("23.06.2015"),"10.01","10.13","9.92","10.08","39496"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("24.06.2015"),"9.95","10.10","9.90","10.10","15679"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("25.06.2015"),"9.95","10.02","9.91","9.97","25179"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("26.06.2015"),"9.96","9.96","9.85","9.96","34495"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("29.06.2015"),"9.85","9.97","9.81","9.81","16397"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("30.06.2015"),"9.85","9.89","9.81","9.82","16268"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("01.07.2015"),"9.89","9.94","9.80","9.80","46653"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("02.07.2015"),"9.83","9.88","9.77","9.80","17076"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("03.07.2015"),"9.79","9.83","9.72","9.77","16205"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("06.07.2015"),"9.70","9.90","9.70","9.82","22134"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("07.07.2015"),"9.85","9.85","9.71","9.75","36045"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("08.07.2015"),"9.85","9.85","9.71","9.75","30251"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("09.07.2015"),"9.80","9.89","9.71","9.89","47512"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("10.07.2015"),"10.01","10.07","9.80","10.07","32187"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("13.07.2015"),"10.09","10.11","9.96","10.11","22766"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("14.07.2015"),"10.11","10.15","9.96","10.15","41484"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("15.07.2015"),"10.16","10.29","10.09","10.29","24432"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("16.07.2015"),"10.35","10.35","10.17","10.30","15772"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("17.07.2015"),"10.21","10.32","10.20","10.27","9156"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("20.07.2015"),"10.17","10.31","10.17","10.31","9177"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("21.07.2015"),"10.32","10.32","10.32","10.32","4179"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("22.07.2015"),"10.23","10.32","10.21","10.32","10856"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("23.07.2015"),"10.32","10.32","10.20","10.30","20291"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("24.07.2015"),"10.20","10.30","10.20","10.30","18020"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("27.07.2015"),"10.29","10.30","10.19","10.30","27542"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("28.07.2015"),"10.30","10.30","10.17","10.28","16836"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("29.07.2015"),"10.24","10.28","10.22","10.28","45936"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("30.07.2015"),"10.20","10.28","10.20","10.28","13454"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("31.07.2015"),"10.20","10.29","10.18","10.29","12542"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("03.08.2015"),"10.29","10.30","10.24","10.30","15583"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("04.08.2015"),"10.29","10.30","10.24","10.30","6466"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("05.08.2015"),"10.30","10.38","10.25","10.38","34767"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("06.08.2015"),"10.39","10.39","10.31","10.39","12505"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("07.08.2015"),"10.31","10.38","10.25","10.38","9910"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("10.08.2015"),"10.30","10.38","10.30","10.30","4707"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("11.08.2015"),"10.28","10.31","10.20","10.24","9129"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("12.08.2015"),"10.20","10.20","10.08","10.15","11436"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("13.08.2015"),"10.05","10.31","10.05","10.31","11860"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("14.08.2015"),"10.31","10.35","10.17","10.35","12226"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("17.08.2015"),"10.35","10.35","10.15","10.26","44145"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("18.08.2015"),"10.21","10.29","10.18","10.29","8929"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("19.08.2015"),"10.25","10.34","10.18","10.24","11367"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("20.08.2015"),"10.19","10.21","10.12","10.17","7225"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("21.08.2015"),"10.12","10.14","9.97","10.05","30506"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("24.08.2015"),"9.95","9.96","9.65","9.78","122463"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("25.08.2015"),"9.80","10.00","9.78","10.00","39002"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("26.08.2015"),"9.85","9.92","9.82","9.92","27617"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("27.08.2015"),"9.92","10.10","9.90","10.10","26330"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("28.08.2015"),"10.10","10.11","9.85","9.94","37318"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("31.08.2015"),"9.90","10.00","9.84","9.90","21586"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("01.09.2015"),"9.91","9.98","9.86","9.94","19402"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("02.09.2015"),"9.82","9.98","9.82","9.98","11976"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("03.09.2015"),"9.99","9.99","9.85","9.99","31252"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("04.09.2015"),"9.99","9.99","9.88","9.99","18854"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("07.09.2015"),"9.98","10.00","9.88","9.98","36176"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("08.09.2015"),"9.90","10.00","9.85","9.88","46680"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("09.09.2015"),"9.86","9.99","9.85","9.96","17585"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("10.09.2015"),"9.99","10.02","9.95","10.02","19656"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("11.09.2015"),"9.95","10.02","9.93","10.00","24298"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("14.09.2015"),"9.93","10.02","9.93","10.01","9133"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("15.09.2015"),"9.93","9.97","9.86","9.96","32574"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("16.09.2015"),"9.96","9.96","9.82","9.90","25130"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("17.09.2015"),"9.99","9.99","9.89","9.99","6890"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("18.09.2015"),"9.90","9.95","9.85","9.95","14247"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("21.09.2015"),"9.90","9.99","9.89","9.99","7026"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("22.09.2015"),"9.87","9.95","9.82","9.93","21998"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("23.09.2015"),"9.93","9.93","9.82","9.86","17560"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("24.09.2015"),"9.83","9.95","9.71","9.95","22481"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("25.09.2015"),"9.91","9.95","9.76","9.95","29797"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("28.09.2015"),"9.84","9.93","9.76","9.88","15862"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("29.09.2015"),"9.76","9.85","9.73","9.85","15560"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("30.09.2015"),"9.85","9.89","9.67","9.85","28472"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("01.10.2015"),"9.86","9.90","9.77","9.90","15999"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("02.10.2015"),"9.83","9.90","9.76","9.89","28492"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("05.10.2015"),"9.81","9.89","9.80","9.87","14958"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("06.10.2015"),"9.90","9.90","9.78","9.90","25912"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("07.10.2015"),"9.90","9.90","9.82","9.88","39192"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("08.10.2015"),"9.83","9.90","9.82","9.90","48526"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("09.10.2015"),"9.90","10.09","9.86","9.95","123855"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("12.10.2015"),"10.00","10.09","9.97","10.09","9805"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("13.10.2015"),"10.04","10.09","9.91","10.04","10182"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("14.10.2015"),"10.04","10.14","9.96","10.00","29743"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("15.10.2015"),"10.08","10.19","9.98","10.19","29259"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("16.10.2015"),"10.19","10.19","10.08","10.16","20348"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("19.10.2015"),"10.10","10.23","10.05","10.20","33168"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("20.10.2015"),"10.15","10.23","10.08","10.14","33974"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("21.10.2015"),"10.17","10.21","10.08","10.15","24550"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("22.10.2015"),"10.18","10.18","10.10","10.14","29692"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("23.10.2015"),"10.18","10.19","10.11","10.19","24241"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("27.10.2015"),"10.13","10.19","9.90","10.00","54299"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("28.10.2015"),"9.94","10.18","9.85","10.18","43478"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("29.10.2015"),"10.03","10.12","9.94","10.03","28165"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("30.10.2015"),"10.08","10.10","9.97","10.05","30551"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("02.11.2015"),"10.00","10.07","9.92","10.02","46571"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("03.11.2015"),"9.95","10.00","9.95","10.00","11985"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("04.11.2015"),"10.00","10.02","9.96","10.00","68345"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("05.11.2015"),"9.96","10.00","9.96","10.00","25001"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("06.11.2015"),"10.00","10.09","9.96","10.00","36317"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("09.11.2015"),"10.05","10.05","9.96","10.04","25214"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("10.11.2015"),"10.00","10.05","9.92","10.02","27602"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("11.11.2015"),"9.95","10.05","9.95","10.00","16100"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("12.11.2015"),"10.00","10.00","9.91","9.98","25421"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("13.11.2015"),"9.98","10.01","9.86","9.95","46412"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("16.11.2015"),"9.95","10.04","9.88","10.04","12804"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("17.11.2015"),"9.98","10.05","9.89","9.99","17353"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("18.11.2015"),"9.99","10.08","9.91","10.08","21003"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("19.11.2015"),"10.01","10.05","9.96","10.00","31505"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("20.11.2015"),"9.99","10.04","9.97","10.00","5673"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("23.11.2015"),"10.00","10.05","9.97","10.04","12110"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("24.11.2015"),"9.97","10.01","9.97","10.00","15821"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("25.11.2015"),"9.96","10.01","9.96","9.99","31300"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("26.11.2015"),"9.99","10.00","9.95","10.00","27531"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("27.11.2015"),"9.95","10.00","9.95","9.98","27323"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("30.11.2015"),"9.98","10.05","9.98","10.05","25335"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("01.12.2015"),"10.05","10.10","9.97","10.10","23311"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("02.12.2015"),"10.09","10.09","10.00","10.07","23921"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("03.12.2015"),"10.01","10.10","9.99","10.00","70825"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("04.12.2015"),"9.99","10.03","9.96","10.00","56736"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("07.12.2015"),"9.96","10.00","9.96","10.00","20335"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("09.12.2015"),"9.95","10.00","9.91","10.00","35272"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("10.12.2015"),"10.12","10.20","9.97","10.05","96058"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("11.12.2015"),"10.10","10.18","9.98","10.06","45998"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("14.12.2015"),"10.09","10.10","9.92","10.03","50280"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("15.12.2015"),"10.05","10.09","9.96","10.06","33408"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("16.12.2015"),"10.04","10.13","10.03","10.13","28148"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("17.12.2015"),"10.19","10.27","10.11","10.25","32722"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("18.12.2015"),"10.25","10.38","10.20","10.38","37366"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("21.12.2015"),"10.34","10.40","10.25","10.40","25070"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("22.12.2015"),"10.38","10.42","10.34","10.42","23707"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("23.12.2015"),"10.40","10.49","10.34","10.46","20272"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("28.12.2015"),"10.49","10.49","10.35","10.48","18018"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("29.12.2015"),"10.41","10.50","10.41","10.50","27555"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("30.12.2015"),"10.50","10.50","10.41","10.50","26229"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("04.01.2016"),"10.49","10.50","10.30","10.45","49245"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("05.01.2016"),"10.43","10.48","10.34","10.48","21727"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("07.01.2016"),"10.40","10.46","10.18","10.40","63662"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("08.01.2016"),"10.45","10.48","10.31","10.48","40302"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("11.01.2016"),"10.45","10.45","10.33","10.41","24038"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("12.01.2016"),"10.40","10.52","10.35","10.52","41047"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("13.01.2016"),"10.50","10.53","10.43","10.50","28458"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("14.01.2016"),"10.42","10.49","10.35","10.46","18443"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("15.01.2016"),"10.50","10.50","10.30","10.39","30981"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("18.01.2016"),"10.30","10.33","10.11","10.14","37792"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("19.01.2016"),"10.13","10.40","10.13","10.31","38638"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("20.01.2016"),"10.31","10.31","10.19","10.26","38412"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("21.01.2016"),"10.20","10.44","10.14","10.24","47843"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("22.01.2016"),"10.30","10.42","10.30","10.41","27136"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("25.01.2016"),"10.32","10.41","10.12","10.26","52750"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("26.01.2016"),"10.29","10.42","10.27","10.37","33532"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("27.01.2016"),"10.19","10.26","10.10","10.15","38870"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("28.01.2016"),"10.07","10.18","10.05","10.18","30772"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("29.01.2016"),"10.16","10.19","10.10","10.19","24839"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("01.02.2016"),"10.10","10.16","10.05","10.15","19638"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("02.02.2016"),"10.10","10.15","10.00","10.13","44643"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("03.02.2016"),"10.02","10.11","9.90","9.96","62871"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("04.02.2016"),"9.97","10.07","9.88","10.00","47721"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("05.02.2016"),"9.90","10.04","9.90","10.00","23748"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("08.02.2016"),"10.00","10.10","9.90","9.91","45976"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("09.02.2016"),"9.90","10.05","9.70","10.00","70557"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("10.02.2016"),"9.99","10.04","9.83","9.98","28361"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("11.02.2016"),"9.91","9.95","9.84","9.94","39713"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("12.02.2016"),"9.95","9.98","9.84","9.94","32265"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("15.02.2016"),"10.05","10.05","9.91","10.00","13805"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("16.02.2016"),"10.02","10.02","9.84","9.99","45029"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("17.02.2016"),"9.99","10.00","9.83","9.87","53139"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("18.02.2016"),"9.80","9.82","9.67","9.70","42773"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("19.02.2016"),"9.70","9.73","9.55","9.65","48759"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("22.02.2016"),"9.75","9.81","9.66","9.81","21320"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("23.02.2016"),"9.79","9.82","9.71","9.82","41677"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("24.02.2016"),"9.89","9.89","9.82","9.88","21658"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("25.02.2016"),"9.90","9.95","9.80","9.95","24509"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("26.02.2016"),"9.95","9.95","9.90","9.95","18523"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("29.02.2016"),"9.95","9.95","9.81","9.94","29393"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("01.03.2016"),"9.95","9.96","9.90","9.96","37946"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("02.03.2016"),"9.96","9.97","9.84","9.93","22117"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("03.03.2016"),"9.83","9.96","9.82","9.96","28105"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("04.03.2016"),"9.97","9.97","9.91","9.96","14621"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("07.03.2016"),"9.86","9.99","9.86","9.99","11550"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("08.03.2016"),"9.84","9.97","9.84","9.96","10457"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("09.03.2016"),"9.98","9.98","9.88","9.96","16639"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("10.03.2016"),"9.96","9.97","9.88","9.93","11332"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("11.03.2016"),"9.90","10.04","9.90","9.96","45445"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("14.03.2016"),"10.00","10.00","9.84","9.96","40866"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("15.03.2016"),"9.91","10.10","9.91","10.10","55196"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("16.03.2016"),"10.02","10.08","9.90","9.91","31948"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("17.03.2016"),"10.00","10.00","9.83","9.89","19678"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("18.03.2016"),"9.89","10.01","9.87","10.01","35479"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("21.03.2016"),"10.00","10.09","9.90","10.09","11404"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("22.03.2016"),"9.91","10.10","9.87","9.90","30281"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("23.03.2016"),"9.85","9.99","9.85","9.99","8698"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("24.03.2016"),"9.85","9.99","9.85","9.99","8698"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("29.03.2016"),"10.00","10.00","9.85","9.97","23861"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("30.03.2016"),"9.92","10.04","9.92","10.04","21805"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("31.03.2016"),"10.07","10.10","10.01","10.10","26187"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("01.04.2016"),"10.10","10.20","10.03","10.20","42558"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("04.04.2016"),"10.08","10.20","10.04","10.20","32522"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("05.04.2016"),"10.15","10.15","9.96","10.00","26595"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("06.04.2016"),"10.19","10.19","10.00","10.14","19948"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("07.04.2016"),"10.14","10.25","10.10","10.25","45047"]);
+    tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFromString("08.04.2016"),"10.25","10.32","10.16","10.32","27737"]);
+  });
+
+}
+
+</script>
+
+<script>
+
+function sqlLoader(){
+	insertWeather();
+	insertStock();
+}
+
+function maxResult(inputs){
+	var vals =  network.getResult(inputs);
+	console.info (vals[0] >= vals[1] && vals[0] >= vals[2] ,vals[1] >= vals[0] && vals[1] >= vals[2] ,vals[2] >= vals[0] && vals[2] >= vals[1] )
+}
+
+function trainData(){
+var trainingData = [];
+
+db.transaction(function (tx) {
+   tx.executeSql('select s.datetime dt, closingvalue, lowtemp, hightemp from StockData s join WeatherData w  on w.datetime = s.datetime', [], function (tx, results) {
+     var len = results.rows.length, i, msg = "<p>Found rows: " + len + "</p>";
+     var rows ="";
+
+	 var lastValue = -1;
+
+      for (i = 0; i < len; i++){
+		var item = results.rows.item(i);
+
+		trainingData[i] = [];
+		rows += "[";
+		for(var n in item){
+			rows += (n=="dt"?new Date(item[n]).getMonth():item[n])  + ", ";
+			trainingData[i].push(item[n]);
+		}
+		rows = rows.replace(/,\s*$/,"");
+		rows += "]";
+
+		if(lastValue==-1){
+			lastValue = item["closingvalue"];
+		}
+
+		var whatToDo = "hold";
+		if (lastValue > item["closingvalue"]){
+			whatToDo = "sell";
+		}else if(lastValue < item["closingvalue"]){
+			whatToDo = "buy";
+		}
+
+		lastValue = item["closingvalue"];
+
+		rows += "  " + whatToDo + "<br />" ;
+
+		if(i!=0){
+			trainingData[i-1].whatToDo = whatToDo;
+		}
+      }
+	  trainingData[i-1].whatToDo = whatToDo;
+	  document.querySelector('#status').innerHTML +=  msg + rows +"DONE";
+
+	  startTraining(trainingData);
+   }, function(t,e){console.warn(e); });
+});
+
+}
+
+var network = new NN(4, 3);
+var whatToDoOptions = {"hold":0, "sell":1, "buy":2};
+
+function startTraining(trainingData){
+	var maxCounts = [];
+	for(var idx in trainingData){
+		if(!maxCounts[whatToDoOptions[trainingData[idx].whatToDo]] || maxCounts[whatToDoOptions[trainingData[idx].whatToDo]]<10){
+			network.train(trainingData[idx], whatToDoOptions[trainingData[idx].whatToDo]);
+			maxCounts[whatToDoOptions[trainingData[idx].whatToDo]] = (maxCounts[whatToDoOptions[trainingData[idx].whatToDo]] ||0)+1;
+		}
+	}
+	console.info(maxCounts);
+}
+
+var db = openDatabase('NNTraining', '', '', 2 * 1024 * 1024, function(){
+  console.info(arguments);
+  console.info(db.version);
+});
+
+db.transaction(function (tx) {
+   tx.executeSql('CREATE TABLE IF NOT EXISTS StockData (datetime number, dayhigh number, daylow number, openingvalue number, closingvalue number, volumne number);');
+   tx.executeSql('CREATE TABLE IF NOT EXISTS WeatherData (datetime number, lowtemp number, hightemp number, windspeed number, rain number);');
+});
+
+function getDateTimeFromString(dateString){
+  var dateParts = dateString.split(".");
+  return new Date(dateParts[2],dateParts[1],dateParts[0]).getTime();
+}
+
+</script>

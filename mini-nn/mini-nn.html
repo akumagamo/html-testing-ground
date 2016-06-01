@@ -2,82 +2,82 @@
 <div id="status"> </div>
 <script>
 'use strict';
-	
+
 	/** Create a NeuralNetwork Object
-	 * @class 
-	 */	
+	 * @class
+	 */
 	var NN = function(layercount, inputcount, outputcount){
 		this._weights = [];
 		this._outputs = [];
-		
+
 		for(var layerIndex = 0; layerIndex < layercount-1; layerIndex++ ){
 			this._weights[layerIndex] = {};
 			for(var inputIndex = 0; inputIndex < inputcount; inputIndex++ ){
 				var outCount = ((layerIndex < layercount - 2)?inputcount:outputcount);
 				this._weights[layerIndex].count = outCount;
 				for(var outputIndex = 0; outputIndex < outCount; outputIndex++ ){
-					this._weights[layerIndex][`${inputIndex}_${outputIndex}`] = Math.random();
+					this._weights[layerIndex][`${inputIndex}_${outputIndex}`] =  Math.random() - 0.5;
 				}
 			}
 		}
 		this._initialize(inputcount);
 	};
-	
+
 	/** Returns calculated sigmoid function on passed delta
 	 * @method sigmoid
 	 * @memberof NN
 	 * @static
 	 * @param {number} delta value
 	 * @returns {number}
-	 */	
+	 */
 	NN.sigmoid = function(delta){
 		return Math.pow((1 + Math.pow(Math.E, -1 * delta)), -1);
 	}
-	
+
 	/** Returns the value for the passed input values
-	 * @method getResult
+	 * @method ult
 	 * @memberof NN
 	 * @param {number[]} input values
 	 * @returns {number[]}
-	 */	
+	 */
 	NN.prototype.getResult = function (inputs){
 		return this._feedforward(inputs);
 	}
-	
+
 	/** trains the NeuralNetwork with the given input and selected output
 	 * @method train
 	 * @memberof NN
-	 * @param {number[]} input values to train 
-	 * @param {number[]} outputindex selected output value 
+	 * @param {number[]} input values to train
+	 * @param {number[]} outputindex selected output value
 	 * @returns {void}
-	 */	
+	 */
 	NN.prototype.train = function (inputs, outputindex){
-		var targets = "0".repeat(this._outputs[1].count).split("");
+		var targets = "0".repeat(this._weights[1].count).split("");
 		targets[outputindex] = 1;
 		this._feedforward(inputs);
 		this._backpropagate(targets);
 	}
-	
-	/** initializes Network wiht first Run 
+
+	/** initializes Network wiht first Run
 	 * @method _initialize
 	 * @memberof NN
 	 * @param {number} number of input values
 	 * @returns {void}
-	 */	
+	 */
 	NN.prototype._initialize = function(inputCount){
 		this._feedforward("1".repeat(inputCount).split("").map(function(c){return c * Math.random();}));
 	}
-	
-	/** feed inputs into the Network and all outputs calculates 
+
+	/** feed inputs into the Network and all outputs calculates
 	 * @method _feedforward
 	 * @memberof NN
 	 * @param {number[]} input values to push into the Network
 	 * @returns {number[]}
-	 */	
-	NN.prototype._feedforward = function (inputs){	
+	 */
+	NN.prototype._feedforward = function (inputs){
 		this._outputs[0] = {};
 		var sum = 0;
-			
+
 		this._outputs[0].count = this._weights[0].count;
 		for(var outputIndex = 0 ; outputIndex < this._weights[0].count ; outputIndex++){
 			sum = 0;
@@ -87,7 +87,7 @@
 			console.info(sum);
 			this._outputs[0][outputIndex] = NN.sigmoid(sum);
 		}
-		
+
 		this._outputs[1] = {};
 		this._outputs[1].count = this._weights[1].count;
 		for(var outputIndex = 0 ; outputIndex < this._weights[1].count ; outputIndex++){
@@ -97,17 +97,17 @@
 			}
 			this._outputs[1][outputIndex] = NN.sigmoid(sum);
 		}
-		
+
 		return this._outputs[1];
 	}
 
 	/** Backpropagates the selected value through the NeuralNetwork
 	 * @method _backpropagate
 	 * @memberof NN
-	 * @param {number[]} input values to train 
-	 * @param {number[]} optional parameter for the diviation 
+	 * @param {number[]} input values to train
+	 * @param {number[]} optional parameter for the diviation
 	 * @returns {void}
-	 */	
+	 */
 	NN.prototype._backpropagate = function (targets, diviation){
 		diviation = diviation || 0.5;
 		var outputError = [];
@@ -116,34 +116,34 @@
 			error = targets[index] - this._outputs[1][index];
 			outputError[index] = NN.sigmoid(this._outputs[1][index]) * error;
 		}
-		
+
 		var hiddenErrors = [];
 		for(var inputsIndex = 0; inputsIndex < this._outputs[0].count; inputsIndex++){
 			error = 0;
-			
+
 			for(var outputIndex = 0 ; outputIndex <  outputError.length ; outputIndex++){
 				error = error + outputError[outputIndex] * this._weights[1][`${inputsIndex}_${outputIndex}`];
 			}
-			
+
 			hiddenErrors[inputsIndex] = NN.sigmoid(this._outputs[0][inputsIndex]) * error;
 		}
-		
+
 		for(var index = 0;index < this._weights[1].count; index++){
 			var change = outputError[index] * this._outputs[1][index];
 			for(var innerIndex = 0; innerIndex < this._outputs[0].count; innerIndex++){
 				this._weights[1][`${innerIndex}_${index}`] = this._weights[1][`${innerIndex}_${index}`] + diviation * change;
 			}
 		}
-				
+
 		for(var index = 0;index < this._weights[0].count; index++){
 			var change = hiddenErrors[index] * this._outputs[0][index];
 			for(var innerIndex = 0; innerIndex < this._outputs[0].count; innerIndex++){
 				this._weights[0][`${innerIndex}_${index}`] = this._weights[0][`${innerIndex}_${index}`] + diviation * change;
 			}
 		}
-		
+
 	}
-	
+
 	var db = openDatabase('NNTraining', '', '', 2 * 1024 * 1024, function(){
 		console.info(arguments);
 		console.info(db.version);
@@ -153,7 +153,7 @@
 	   tx.executeSql('CREATE TABLE IF NOT EXISTS StockData (datetime number, dayhigh number, daylow number, openingvalue number, closingvalue number, volumne number);');
 	   tx.executeSql('CREATE TABLE IF NOT EXISTS WeatherData (datetime number, lowtemp number, hightemp number, windspeed number, rain number);');
 	});
-	
+
 	function getDateTimeFromString(dateString){
 		var dateParts = dateString.split(".");
 		return new Date(dateParts[2],dateParts[1],dateParts[0]).getTime();
@@ -798,16 +798,26 @@ tx.executeSql('INSERT INTO StockData VALUES (?, ?, ?, ?, ?, ?)', [getDateTimeFro
 
 <script>
 
+function sqlLoader(){
+	insertWeather();
+	insertStock();
+}
+
+function maxResult(inputs){
+	var vals =  network.getResult(inputs);
+	console.info (vals[0] >= vals[1] && vals[0] >= vals[2] ,vals[1] >= vals[0] && vals[1] >= vals[2] ,vals[2] >= vals[0] && vals[2] >= vals[1] )
+}
+
 function trainData(){
 var trainingData = [];
-	
+
 db.transaction(function (tx) {
-   tx.executeSql('select s.datetime/100000, dayhigh, daylow, openingvalue, closingvalue, volumne, lowtemp, hightemp, windspeed, rain from StockData s join WeatherData w  on w.datetime = s.datetime', [], function (tx, results) {
+   tx.executeSql('select closingvalue, lowtemp, hightemp from StockData s join WeatherData w  on w.datetime = s.datetime', [], function (tx, results) {
      var len = results.rows.length, i, msg = "<p>Found rows: " + len + "</p>";
      var rows ="";
-	 
+
 	 var lastValue = -1;
-	  
+
       for (i = 0; i < len; i++){
 		var item = results.rows.item(i);
 
@@ -819,41 +829,46 @@ db.transaction(function (tx) {
 		}
 		rows = rows.replace(/,\s*$/,"");
 		rows += "]";
-		
+
 		if(lastValue==-1){
 			lastValue = item["closingvalue"];
 		}
-		
+
 		var whatToDo = "hold";
 		if (lastValue > item["closingvalue"]){
 			whatToDo = "sell";
 		}else if(lastValue < item["closingvalue"]){
 			whatToDo = "buy";
 		}
-		
+
 		lastValue = item["closingvalue"];
-		
+
 		rows += "  " + whatToDo + "<br />" ;
-		
+
 		if(i!=0){
 			trainingData[i-1].whatToDo = whatToDo;
 		}
       }
 	  trainingData[i-1].whatToDo = whatToDo;
 	  document.querySelector('#status').innerHTML +=  msg + rows +"DONE";
-	  
+
 	  startTraining(trainingData);
    }, function(t,e){console.warn(e); });
 });
 
 }
 
-var network = new NN(3, 10, 3);
+var network = new NN(3, 3, 3);
 var whatToDoOptions = {"hold":0, "sell":1, "buy":2};
 
 function startTraining(trainingData){
+	var maxCounts = [];
 	for(var idx in trainingData){
-		network.train(trainingData[idx], whatToDoOptions[trainingData[idx].whatToDo]);
+		if(!maxCounts[whatToDoOptions[trainingData[idx].whatToDo]] || maxCounts[whatToDoOptions[trainingData[idx].whatToDo]]<10){
+			network.train(trainingData[idx], whatToDoOptions[trainingData[idx].whatToDo]);
+			maxCounts[whatToDoOptions[trainingData[idx].whatToDo]] = (maxCounts[whatToDoOptions[trainingData[idx].whatToDo]] ||0)+1;
+		}
 	}
+	console.info(maxCounts);
 }
 </script>
